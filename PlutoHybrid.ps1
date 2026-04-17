@@ -126,7 +126,7 @@ function Test-KernelModePrerequisites {
     # Check HVCI (Hypervisor-protected Code Integrity / Memory Integrity)
     try {
         $hvci = (Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard" -Name EnableVirtualizationBasedSecurity -EA SilentlyContinue).EnableVirtualizationBasedSecurity
-        $results.HVCI = ($hvci -eq 0 -or $hvci -eq $null)
+        $results.HVCI = ($hvci -eq 0 -or $null -eq $hvci)
         Write-PlutoLog "HVCI/Memory Integrity: $(if($results.HVCI){'OFF ✓'}else{'ON ✗'})" $(if($results.HVCI){"SUCCESS"}else{"WARN"})
     }
     catch {
@@ -567,14 +567,14 @@ function Invoke-PlutoHybridSpoof {
             # Document the driver architecture
             $driverInfo = New-PlutoDriverPackage
             
-            Write-PlutoLog "" "INFO"
+            Write-PlutoLog "Kernel driver status check..." "INFO"
             Write-PlutoLog "=== KERNEL DRIVER STATUS ===" "KERNEL"
             Write-PlutoLog "Components documented: $($driverInfo.Components.Count)" "KERNEL"
             foreach ($comp in $driverInfo.Components) {
                 Write-PlutoLog "  - $($comp.Name): $($comp.Purpose) [$($comp.Status)]" "KERNEL"
             }
             
-            Write-PlutoLog "" "INFO"
+            Write-PlutoLog "Kernel-mode setup instructions:" "INFO"
             Write-PlutoLog "To complete kernel-mode spoofing:" "WARN"
             Write-PlutoLog "1. Review: $($driverInfo.Documentation)" "INFO"
             Write-PlutoLog "2. Build drivers using Windows Driver Kit (WDK)" "INFO"
@@ -582,7 +582,7 @@ function Invoke-PlutoHybridSpoof {
             Write-PlutoLog "4. Load drivers with documented loader" "INFO"
         }
         elseif ($kernelStatus.Status -eq "RESTART_REQUIRED") {
-            Write-PlutoLog "" "WARN"
+            Write-PlutoLog "Restart needed for kernel-mode" "WARN"
             Write-PlutoLog "=== ACTION REQUIRED ===" "WARN"
             Write-PlutoLog "Kernel-mode preparation incomplete" "WARN"
             Write-PlutoLog "Restart your computer to enable Test Mode" "WARN"
@@ -594,7 +594,7 @@ function Invoke-PlutoHybridSpoof {
     }
     
     # Summary
-    Write-PlutoLog "" "INFO"
+    Write-PlutoLog "Generating spoof summary..." "INFO"
     Write-PlutoLog "=== SPOOF SUMMARY ===" "SUCCESS"
     Write-PlutoLog "User-Mode Changes:" "INFO"
     Write-PlutoLog "  Machine GUID: $(if($userResults.MachineGUID){'CHANGED ✓'}else{'FAILED ✗'})" $(if($userResults.MachineGUID){"SUCCESS"}else{"ERROR"})
@@ -602,9 +602,9 @@ function Invoke-PlutoHybridSpoof {
     Write-PlutoLog "  Windows Update ID: $(if($userResults.WindowsUpdateID){'REGENERATED ✓'}else{'FAILED ✗'})" $(if($userResults.WindowsUpdateID){"SUCCESS"}else{"ERROR"})
     Write-PlutoLog "  PC Name: $(if($userResults.PCName){'CHANGED ✓ (restart req)'}else{'FAILED ✗'})" $(if($userResults.PCName){"SUCCESS"}else{"ERROR"})
     Write-PlutoLog "  Traces Cleaned: $($userResults.TracesCleaned)" "INFO"
-    Write-PlutoLog "" "INFO"
+    Write-PlutoLog "Kernel-mode layer status check..." "INFO"
     Write-PlutoLog "Kernel-Mode Layer: $(if($kernelStatus.CanProceed){'READY (drivers need building)'}else{'PENDING (restart or manual setup)'})" "INFO"
-    Write-PlutoLog "" "INFO"
+    Write-PlutoLog "Spoofing operation complete" "INFO"
     Write-PlutoLog "Log file: $($PlutoConfig.LogPath)\pluto-$(Get-Date -Format yyyyMMdd).log" "INFO"
     
     if (-not $userResults.PCName) {
