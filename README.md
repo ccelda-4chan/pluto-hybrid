@@ -1,11 +1,23 @@
-# 🔱 Pluto Hybrid HWID Spoofer v2.0
+# 🔱 VanguardSpoofer Kernel Driver v2.0
 
-[![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://microsoft.com/powershell)
+[![C](https://img.shields.io/badge/C-Kernel%20Driver-blue.svg)]()
 [![Windows](https://img.shields.io/badge/Windows-10%2F11-blue.svg)](https://microsoft.com/windows)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](../LICENSE)
-[![Architecture](https://img.shields.io/badge/architecture-hybrid-purple.svg)]()
+[![Architecture](https://img.shields.io/badge/architecture-kernel--mode-red.svg)]()
 
-> **The most comprehensive documented HWID spoofing toolkit.** Combines user-mode registry operations with documented kernel-mode driver architecture for complete system identity modification.
+> **Professional kernel-level HWID spoofer for Windows.** Hooks WMI queries and disk IOCTLs to spoof hardware identifiers at the kernel level, bypassing anti-cheat HWID bans.
+
+## ⚠️ Kernel-Level Only
+
+This is a **pure kernel driver implementation**. No user-mode spoofing.
+
+| Feature | Level | Method | Effectiveness |
+|---------|-------|--------|---------------|
+| **SMBIOS Baseboard** | Kernel | WMI Hook | ✅ Complete |
+| **Disk Serials** | Kernel | IOCTL Hook | ✅ Complete |
+| **System UUID** | Kernel | WMI Hook | ✅ Complete |
+| **MAC Addresses** | Kernel | NDIS Hook | ✅ Complete |
+| **Registry Values** | Not Included | N/A | ❌ Use separate tools |
 
 ---
 
