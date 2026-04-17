@@ -268,7 +268,7 @@ function Build-VKDriver {
     }
     
     # Create MSBuild project file
-    $Vcxproj = @"
+    $Vcxproj = @'
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
@@ -283,12 +283,12 @@ function Build-VKDriver {
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
     <Configuration>Release</Configuration>
-    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    <Platform>x64</Platform>
     <RootNamespace>VanguardHook</RootNamespace>
     <DriverType>KMDF</DriverType>
     <KMDFVersionMajor>1</KMDFVersionMajor>
   </PropertyGroup>
-  <Import Project="`$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <TargetVersion>Windows10</TargetVersion>
     <UseDebugLibraries>false</UseDebugLibraries>
@@ -296,16 +296,16 @@ function Build-VKDriver {
     <ConfigurationType>Driver</ConfigurationType>
     <DriverType>KMDF</DriverType>
   </PropertyGroup>
-  <Import Project="`$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ItemGroup>
-    <FilesToPackage Include="`$(TargetPath)" />
+    <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="VanguardHook.c" />
   </ItemGroup>
-  <Import Project="`$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
-"@
+'@
     $Vcxproj | Out-File -FilePath "$($Global:Config.DriverSrc)\VanguardHook.vcxproj" -Encoding UTF8
     
     # Build using MSBuild
