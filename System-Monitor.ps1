@@ -91,7 +91,7 @@ while ($iterations -lt $maxIterations) {
     $currentProcs = Get-Process | Select-Object Name, Id, Path, StartTime
     $newProcs = $currentProcs | Where-Object { 
         $procName = $_.Name
-        $baseline.Processes | Where-Object { $_.Name -eq $procName } | Measure-Object | Select-Object -ExpandProperty Count -eq 0
+        ($baseline.Processes | Where-Object { $_.Name -eq $procName } | Measure-Object | Select-Object -ExpandProperty Count) -eq 0
     }
     
     foreach ($proc in $newProcs) {
