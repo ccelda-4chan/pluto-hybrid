@@ -1,0 +1,83 @@
+;
+; VanguardSpoofer.inf - Installation file for Vanguard HWID Spoofer Driver
+;
+; This driver provides kernel-level hardware identifier spoofing for
+; bypassing HWID bans in anti-cheat protected games.
+;
+; Compatible with: Windows 10, Windows 11
+; Architecture: x64
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=System
+ClassGuid={4d36e97d-e325-11ce-bfc1-08002be10318}
+Provider=%ManufacturerName%
+CatalogFile=VanguardSpoofer.cat
+DriverVer=04/18/2026,2.0.0.0
+PnpLockdown=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+VanguardSpoofer_Device_CoInstaller_CopyFiles = 11
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+VanguardSpoofer.sys  = 1,,
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName%=Standard,NTamd64
+
+[Standard.NTamd64]
+%VanguardSpoofer.DeviceDesc%=VanguardSpoofer_Device, Root\VanguardSpoofer
+
+[VanguardSpoofer_Device.NT]
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+VanguardSpoofer.sys
+
+;-------------- Service installation
+[VanguardSpoofer_Device.NT.Services]
+AddService = VanguardSpoofer,%SPSVCINST_ASSOCSERVICE%, VanguardSpoofer_Service_Inst
+
+; -------------- VanguardSpoofer driver install sections
+[VanguardSpoofer_Service_Inst]
+DisplayName    = %VanguardSpoofer.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\VanguardSpoofer.sys
+
+;
+;--- VanguardSpoofer_Device Coinstaller installation ------
+;
+
+[VanguardSpoofer_Device.NT.CoInstallers]
+AddReg=VanguardSpoofer_Device_CoInstaller_AddReg
+CopyFiles=VanguardSpoofer_Device_CoInstaller_CopyFiles
+
+[VanguardSpoofer_Device_CoInstaller_AddReg]
+HKR,,CoInstallers32,0x00010000, "WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll,WdfCoInstaller"
+
+[VanguardSpoofer_Device_CoInstaller_CopyFiles]
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll
+
+[VanguardSpoofer_Device.NT.Wdf]
+KmdfService = VanguardSpoofer, VanguardSpoofer_wdfsect
+
+[VanguardSpoofer_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+ManufacturerName="Pluto Research Labs"
+DiskName = "VanguardSpoofer Installation Disk"
+VanguardSpoofer.DeviceDesc = "Vanguard HWID Spoofer Device"
+VanguardSpoofer.SVCDESC = "Vanguard HWID Spoofer Service"
