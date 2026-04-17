@@ -537,6 +537,224 @@ Limitation: Only affects current process
 
 #endregion
 
+#region Before/After Comparison System
+
+function Get-HardwareIdentifiers {
+    $ids = @{
+        MachineGUID = ""
+        MACAddresses = @()
+        PCName = ""
+        WindowsUpdateID = ""
+        DiskSerials = @()
+        SMBIOS_UUID = ""
+        BIOSVersion = ""
+        BaseboardSerial = ""
+        Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    }
+    
+    # Machine GUID
+    try {
+        $ids.MachineGUID = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Cryptography" -Name MachineGuid -EA Stop).MachineGuid
+    }
+    catch { $ids.MachineGUID = "NOT_FOUND" }
+    
+    # MAC Addresses
+    try {
+        $adapters = Get-NetAdapter | Where-Object { $_.PhysicalMediaType -eq '802.3' -and $_.Status -eq 'Up' }
+        foreach ($adapter in $adapters) {
+            $ids.MACAddresses += "[$($adapter.Name)] $($adapter.MacAddress)"
+        }
+    }
+    catch { $ids.MACAddresses += @("ERROR_READING") }
+    
+    # PC Name
+    $ids.PCName = $env:COMPUTERNAME
+    
+    # Windows Update ID (partial - just check existence)
+    try {
+        $wuPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate"
+        if (Test-Path $wuPath) {
+            $susId = (Get-ItemProperty $wuPath -Name SusClientId -EA SilentlyContinue).SusClientId
+            $ids.WindowsUpdateID = if ($susId) { "EXISTS_$(($susId -split '-')[0])" } else { "NOT_SET" }
+        }
+        else { $ids.WindowsUpdateID = "NOT_FOUND" }
+    }
+    catch { $ids.WindowsUpdateID = "ERROR" }
+    
+    # Disk Serials (WMI - this is what games check)
+    try {
+        $disks = Get-WmiObject Win32_DiskDrive | Select-Object -First 2
+        foreach ($disk in $disks) {
+            $ids.DiskSerials += "Disk$($disk.Index): $($disk.SerialNumber)"
+        }
+    }
+    catch { $ids.DiskSerials += @("ERROR_READING") }
+    
+    # SMBIOS UUID (System identifier)
+    try {
+        $csProduct = Get-WmiObject Win32_ComputerSystemProduct
+        $ids.SMBIOS_UUID = $csProduct.UUID
+    }
+    catch { $ids.SMBIOS_UUID = "NOT_FOUND" }
+    
+    # BIOS Version
+    try {
+        $bios = Get-WmiObject Win32_BIOS
+        $ids.BIOSVersion = "$($bios.Manufacturer) $($bios.Version)"
+    }
+    catch { $ids.BIOSVersion = "NOT_FOUND" }
+    
+    # Baseboard Serial
+    try {
+        $baseboard = Get-WmiObject Win32_BaseBoard
+        $ids.BaseboardSerial = $baseboard.SerialNumber
+    }
+    catch { $ids.BaseboardSerial = "NOT_FOUND" }
+    
+    return $ids
+}
+
+function Show-HWIDComparison {
+    param($Before, $After)
+    
+    Write-Host "`n" -NoNewline
+    Write-Host "╔════════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+    Write-Host "║                   HARDWARE ID COMPARISON - BEFORE vs AFTER                       ║" -ForegroundColor Cyan
+    Write-Host "╠════════════════════════════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
+    
+    # Machine GUID
+    $guidChanged = $Before.MachineGUID -ne $After.MachineGUID
+    $guidStatus = if ($guidChanged) { "✓ CHANGED" } else { "✗ SAME" }
+    $guidColor = if ($guidChanged) { "Green" } else { "Red" }
+    Write-Host "║ Machine GUID:                                                                  ║" -ForegroundColor Cyan
+    Write-Host "║   BEFORE: $($Before.MachineGUID)" -ForegroundColor Gray -NoNewline; Write-Host " $guidStatus" -ForegroundColor $guidColor
+    Write-Host "║   AFTER:  $($After.MachineGUID)" -ForegroundColor Green
+    Write-Host "╠════════════════════════════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
+    
+    # MAC Addresses
+    Write-Host "║ MAC Addresses:                                                                 ║" -ForegroundColor Cyan
+    for ($i = 0; $i -lt [Math]::Max($Before.MACAddresses.Count, $After.MACAddresses.Count); $i++) {
+        $beforeMac = if ($i -lt $Before.MACAddresses.Count) { $Before.MACAddresses[$i] } else { "N/A" }
+        $afterMac = if ($i -lt $After.MACAddresses.Count) { $After.MACAddresses[$i] } else { "N/A" }
+        $macChanged = $beforeMac -ne $afterMac
+        $macStatus = if ($macChanged) { "✓" } else { "✗" }
+        $macColor = if ($macChanged) { "Green" } else { "Yellow" }
+        Write-Host "║   $($beforeMac.PadRight(50)) $macStatus" -ForegroundColor Gray -NoNewline
+        if ($macChanged) {
+            Write-Host "`n║   → $($afterMac)" -ForegroundColor Green
+        }
+        else {
+            Write-Host ""
+        }
+    }
+    Write-Host "╠════════════════════════════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
+    
+    # PC Name
+    $nameChanged = $Before.PCName -ne $After.PCName
+    $nameStatus = if ($nameChanged) { "✓ CHANGED" } else { "✗ SAME" }
+    $nameColor = if ($nameChanged) { "Green" } else { "Red" }
+    Write-Host "║ PC Name:                                                                       ║" -ForegroundColor Cyan
+    Write-Host "║   BEFORE: $($Before.PCName)" -ForegroundColor Gray -NoNewline; Write-Host " $nameStatus" -ForegroundColor $nameColor
+    Write-Host "║   AFTER:  $($After.PCName)" -ForegroundColor Green
+    Write-Host "╠════════════════════════════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
+    
+    # Windows Update ID
+    $wuChanged = $Before.WindowsUpdateID -ne $After.WindowsUpdateID
+    $wuStatus = if ($wuChanged) { "✓ REGENERATED" } else { "✗ SAME" }
+    $wuColor = if ($wuChanged) { "Green" } else { "Yellow" }
+    Write-Host "║ Windows Update ID:                                                             ║" -ForegroundColor Cyan
+    Write-Host "║   BEFORE: $($Before.WindowsUpdateID)" -ForegroundColor Gray -NoNewline; Write-Host " $wuStatus" -ForegroundColor $wuColor
+    Write-Host "║   AFTER:  $($After.WindowsUpdateID)" -ForegroundColor Green
+    Write-Host "╠════════════════════════════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
+    
+    # Hardware-backed IDs (cannot be changed by registry)
+    Write-Host "║ HARDWARE-BACKED IDs (Cannot change via registry):                              ║" -ForegroundColor Yellow
+    Write-Host "║   SMBIOS UUID:     $($Before.SMBIOS_UUID)" -ForegroundColor Gray
+    Write-Host "║   Disk Serials:    $($Before.DiskSerials -join ', ')" -ForegroundColor Gray
+    Write-Host "║   BIOS Version:    $($Before.BIOSVersion)" -ForegroundColor Gray
+    Write-Host "║   Baseboard SN:    $($Before.BaseboardSerial)" -ForegroundColor Gray
+    Write-Host "║   ⚠ These require kernel drivers or firmware flash to change                   ║" -ForegroundColor Yellow
+    Write-Host "╚════════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+}
+
+function Show-ValorantGuidance {
+    param($UserResults, $KernelStatus)
+    
+    Write-Host "`n" -NoNewline
+    Write-Host "╔════════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
+    Write-Host "║                         VALORANT / VANGUARD GUIDANCE                           ║" -ForegroundColor Magenta
+    Write-Host "╠════════════════════════════════════════════════════════════════════════════════╣" -ForegroundColor Magenta
+    
+    # Status assessment
+    $spoofLevel = "PARTIAL"
+    $spoofColor = "Yellow"
+    $recommendation = @"
+⚠ PARTIAL SPOOF - User-mode only (Registry-based changes)
+
+Vanguard (Valorant's anti-cheat) checks:
+✓ Machine GUID        - CHANGED (User-mode effective)
+✓ PC Name             - CHANGED (User-mode effective)
+✓ MAC Address         - CHANGED (if adapter reset worked)
+✓ Windows Update ID   - CHENERATED (User-mode effective)
+
+✗ SMBIOS UUID         - UNCHANGED (Hardware-backed)
+✗ Disk Serials        - UNCHANGED (Hardware-backed)
+✗ BIOS Serial         - UNCHANGED (Hardware-backed)
+
+⚠ RISK: Vanguard may still identify your machine via:
+   - SMBIOS UUID (most critical for HWID bans)
+   - Disk firmware serials
+   - TPM measurements
+   - Motherboard serial
+
+NEXT STEPS FOR FULL BYPASS:
+1. Restart PC (Test Mode now enabled)
+2. Disable Secure Boot in BIOS (F2/Del on boot)
+3. Re-run this script for kernel-mode preparation
+4. Build/load kernel drivers (documented in DRIVER_ARCHITECTURE.md)
+5. Or use a VM with GPU passthrough (recommended safer approach)
+
+⚠ WARNING: Kernel driver evasion is detected by Vanguard.
+   Most "working" spoofers use private, signed drivers.
+   Registry-only spoofing has LIMITED effectiveness against Vanguard.
+"@
+    
+    if ($KernelStatus.CanProceed) {
+        $spoofLevel = "KERNEL-READY"
+        $spoofColor = "Cyan"
+        $recommendation = @"
+✓ KERNEL-MODE READY - Prerequisites satisfied
+
+Vanguard evasion possible if kernel drivers loaded:
+- WMI filter driver can spoof SMBIOS queries
+- Disk filter driver can spoof serial numbers
+- PCI filter can spoof GPU IDs
+
+NEXT STEPS:
+1. Review DRIVER_ARCHITECTURE.md
+2. Build drivers with Windows Driver Kit (WDK)
+3. Load with kdmapper or similar
+4. Re-run with kernel-mode enabled
+
+⚠ WARNING: Unsigned drivers are detected by Vanguard.
+   You need a signed driver or advanced evasion techniques.
+"@
+    }
+    
+    Write-Host $recommendation -ForegroundColor $spoofColor
+    Write-Host "╚════════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
+    
+    # Action items
+    Write-Host "`n📋 ACTION CHECKLIST:" -ForegroundColor White
+    Write-Host "   [ ] Restart computer (Test Mode pending)" -ForegroundColor $(if($KernelStatus.Status -eq "RESTART_REQUIRED"){"Yellow"}else{"Green"})
+    Write-Host "   [ ] Disable Secure Boot in BIOS" -ForegroundColor Yellow
+    Write-Host "   [ ] Disable HVCI/Memory Integrity" -ForegroundColor Yellow
+    Write-Host "   [ ] Build kernel drivers (for full spoof)" -ForegroundColor Cyan
+    Write-Host "   [ ] Or use VM with GPU passthrough (safer)" -ForegroundColor Cyan
+}
+
+#endregion
+
 #region Full Hybrid Execution
 
 function Invoke-PlutoHybridSpoof {
@@ -553,6 +771,10 @@ function Invoke-PlutoHybridSpoof {
 "@ -ForegroundColor Cyan
     
     Write-PlutoLog "Starting hybrid spoof sequence..." "INFO"
+    
+    # Capture BEFORE values
+    Write-PlutoLog "Capturing hardware identifiers BEFORE spoofing..." "INFO"
+    $beforeIds = Get-HardwareIdentifiers
     
     # Phase 1: User-Mode (Always works)
     $userResults = Invoke-UserModeSpoof
@@ -592,6 +814,16 @@ function Invoke-PlutoHybridSpoof {
             Write-PlutoLog "Kernel-mode layer unavailable - continuing with user-mode only" "WARN"
         }
     }
+    
+    # Capture AFTER values
+    Write-PlutoLog "Capturing hardware identifiers AFTER spoofing..." "INFO"
+    $afterIds = Get-HardwareIdentifiers
+    
+    # Show side-by-side comparison
+    Show-HWIDComparison -Before $beforeIds -After $afterIds
+    
+    # Show Valorant/Vanguard specific guidance
+    Show-ValorantGuidance -UserResults $userResults -KernelStatus $kernelStatus
     
     # Summary
     Write-PlutoLog "Generating spoof summary..." "INFO"
