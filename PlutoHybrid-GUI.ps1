@@ -319,7 +319,7 @@ function Check-Prerequisites {
     # HVCI
     try {
         $hvci = (Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard" -Name EnableVirtualizationBasedSecurity -EA SilentlyContinue).EnableVirtualizationBasedSecurity
-        if ($hvci -eq 0 -or $hvci -eq $null) {
+        if ($hvci -eq 0 -or $null -eq $hvci) {
             $txtHVCI.Text = "OFF"
             $txtHVCI.Foreground = "#00d2a0"
         } else {
